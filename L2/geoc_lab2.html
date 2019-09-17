@@ -1,0 +1,208 @@
+<html>
+<head>
+<title>GEOC - Lab 2</title>
+</head>
+
+<h1>GEOC - Lab 2</h1>
+<canvas id="canvas" width="600" height="600"></canvas>
+
+<script type="text/javascript" src="TestLab2_1.json.js"></script>
+<script type="text/javascript" src="TestLab2_2.json.js"></script>
+<script type="text/javascript" src="TestLab2_3.json.js"></script>
+
+<form>
+Input data set:
+<select id="dataset" onchange="changeDataSet()">
+  <option value="0">Test set 1</option>
+  <option value="1">Test set 2</option>
+  <option value="2">Test set 3</option>
+</select>
+</form>
+
+
+<p>
+Note: show result by coloring each point differently depending on its situation with respect to the triangle. <b>Explain in the HTML the meaning of each color</b>.
+</p>
+
+<h2>Result of (an absurd) classification</h2>
+<span id="result"></span>
+
+<script type="text/javascript">
+
+//========= Auxiliary objects and data =========//
+
+// Important: these are the input data sets
+var inputJSONs = [inputJSON1,inputJSON2,inputJSON3] ; 
+
+var points = inputJSONs[0].points; // Default dat set
+var triangle = inputJSONs[0].triangle;
+
+// See names colors at https://www.w3schools.com/colors/colors_names.asp
+// Some colors you could use
+var colors = ['Red', 'Green', 'Cyan',  'Magenta'];
+
+// default styles
+style = {
+  curve: {
+    width: 6,
+    color: "#333"
+  },
+  line: {
+    width: 1,
+    color: "#000"
+  },
+  point: {
+    radius: 4,
+    width: 2,
+    color: "Black",
+    fill: "Black",
+    arc1: 0,
+    arc2: 2 * Math.PI
+  }
+}
+
+context1 = canvas.getContext("2d");
+context1.translate(120,150); // Translation so see full points
+drawCanvas();
+
+//========= Auxiliary functions =========//
+function drawCanvas() {
+  // Clear everything
+  context1.clearRect(-canvas.width / 2, -canvas.height / 2, 2 * canvas.width, 2 * canvas.height);
+  document.getElementById("result").innerHTML = "";
+  // Draw stuff
+  drawPoints(context1, style, points, triangle); 
+  drawTriangle(context1, style, triangle);
+
+}
+
+// Draws one point as circle
+function drawPoint(ctx, style, p) {
+    ctx.lineWidth = style.point.width;
+    ctx.strokeStyle = style.point.color;
+    ctx.fillStyle = style.point.fill;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, style.point.radius, style.point.arc1, style.point.arc2, true);
+    ctx.fill();
+    ctx.stroke();
+}
+
+// Draws one triangle
+function drawTriangle(ctx, style, t) {
+	ctx.lineWidth = style.line.width;
+	ctx.strokeStyle = style.line.color;
+    ctx.beginPath();
+	ctx.moveTo(t[0].x,t[0].y);
+	ctx.lineTo(t[1].x,t[1].y);
+	ctx.lineTo(t[2].x,t[2].y);
+	ctx.lineTo(t[0].x,t[0].y);
+    ctx.stroke();
+}
+
+
+// Draws all input points, with its classification color
+function drawPoints(ctx, style, points, triangle) {
+
+	for (var i = 0; i < points.length; i++) {
+	
+		var result = classifyPoint(points[i], triangle);
+		style.point.fill = result.color;
+		style.point.color = result.color;
+		reportResult (result, i);
+		drawPoint(ctx, style, points[i]);
+	}
+}
+
+// Outputs the value of the intersection classification to the "results" HTML element
+function reportResult(classification, index) {
+	var text = "<font color='" + classification.color + "'>" + (index+1) + ":";
+	text = text + classification.description;
+	text = text + "</font><br>";
+	document.getElementById("result").innerHTML = document.getElementById("result").innerHTML + text;
+}
+
+// Method to choose between the different data set
+function changeDataSet() {
+	var index = document.getElementById("dataset").value;
+	// Change points and triangle
+	points = inputJSONs[index].points; // Default dat set
+	triangle = inputJSONs[index].triangle;
+	drawCanvas(); // Redraw
+}
+
+//========= Your code somewhere here =========//
+
+function makeDeterminant(p,q,r) {
+    var d1 = q.x - p.x;
+    var d2 = r.x-p.x;
+    var d3 = q.y -p.y;
+    var d4 = r.y - p.y;
+    
+    var aux1 = d1*d4;
+    var aux2 = d2*d3;
+    
+    return aux1-aux2;
+}
+
+function is_SamePoint(p1,p2) {
+  return p1.x == p2.x && p1.y == p2.y;
+}
+
+function is_Vertex(p,t) {
+  return is_SamePoint(p,t[0]) || is_SamePoint(p,t[1]) || is_SamePoint(p,t[2]);
+}
+
+function distance(a,b) {
+    return Math.sqrt(Math.pow(a.x-b.x,2) + Math.pow(a.y -b.y,2));
+}
+// 
+function is_Between(a,r,b) {
+    return distance(a,r) + distance(b,r) == distance(a,b);
+}
+
+
+// TODO: Add your code here to classify the point w.r.t. the triangle
+function classifyPoint(p, triangle) {
+	// TODO Change this!
+	var color = colors[0];
+  var description = "This point is outside of Triangle";
+  // at first determine if one point is a vertex.
+  if ( is_Vertex(p,triangle) ) {
+    color = colors[2];
+    description = "This point is a vertex of triangle";
+  }
+  else  {
+    var d1 = makeDeterminant(triangle[0],triangle[1],p);
+    var d2 = makeDeterminant(triangle[1],triangle[2],p);
+    var d3 = makeDeterminant(triangle[2],triangle[0],p);
+
+    // Determine if is inside triangle.
+    
+    if ( d1 < 0 && d2 < 0 && d3 < 0) {
+      color = colors[1]; 
+      description = "This point is inside of triangle, not in the perimeter";
+    }
+    else if ( d1 > 0 && d2 > 0 && d3 > 0)  {
+      color = colors[1]; 
+      description = "This point is inside of triangle, not in the perimeter";
+    }
+
+    else if ( d1 == 0 && is_Between(triangle[0],p,triangle[1])) {
+      color = colors[3];
+      description = "This point is on a edge";
+    }
+     else if ( d2 == 0 && is_Between(triangle[1],p,triangle[2])) {
+      color = colors[3];
+      description = "This point is on a edge";
+    }
+     else if ( d3 == 0 && is_Between(triangle[2],p,triangle[0])) {
+      color = colors[3];
+      description = "This point is on a edge";
+    }
+  }
+	
+	return {"color": color, "description": description} ;
+}
+
+</script>
+</html>
