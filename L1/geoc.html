@@ -1,0 +1,242 @@
+<html><head>
+<title>GEOC - Lab 1</title>
+</head>
+<body><h1>GEOC - Lab 1</h1>
+
+<br>
+Last mouse position on canvas: <span id="mousepos">(915, 186)</span>
+<br>
+<canvas id="canvas" width="1200" height="800"></canvas>
+<br>
+
+
+<script type="text/javascript" src="TestLab1.json.js"></script>
+
+
+
+<h2>Result of intersection classification</h2>
+<span id="result"></span>
+
+<script type="text/javascript">
+
+//========= Auxiliary objects and data =========//
+
+// Important: this is the input
+var segments = inputJSON.segments; // Requires inputJSON variable set in file
+//var segments = inputJSON.segments.slice(0,6); // You can use slice() to select a subset of the segments. Make sure it is an even number!
+
+var points = [];
+// See names colors at https://www.w3schools.com/colors/colors_names.asp
+// Add as many colors as needed to classify all intersection types
+var colors = [ 'Red', 'Blue', 'Green', 'Cyan', 'DarkOrange', 'Magenta', 'RosyBrown'];
+
+// default styles
+style = {
+  curve: {
+    width: 6,
+    color: "#333"
+  },
+  line: {
+    width: 1,
+    color: "#C00"
+  },
+  point: {
+    radius: 4,
+    width: 2,
+    color: "Black",
+    fill: "Black",
+    arc1: 0,
+    arc2: 2 * Math.PI
+  }
+}
+
+
+
+context1 = canvas.getContext("2d");
+drawCanvas();
+
+// Method to show mouse position relative to canvas as the mouse moves.
+canvas.addEventListener('mousemove', function(e) {
+	var rect = canvas.getBoundingClientRect();
+	var x = e.clientX - Math.round(rect.left);
+	var y = e.clientY - Math.round(rect.top);
+	document.getElementById("mousepos").innerHTML = "(" + x + ", " + y + ")";
+});
+
+//========= Auxiliary functions =========//
+function drawCanvas() {
+  // Clear everything
+  context1.clearRect(-canvas.width / 2, -canvas.height / 2, 2 * canvas.width, 2 * canvas.height);
+  // Draw whatever needs to be drawn
+  drawSegments(context1, style, segments); 
+
+}
+
+// Draws one point as circle
+function drawPoint(ctx, style, p) {
+    ctx.lineWidth = style.point.width;
+    ctx.strokeStyle = style.point.color;
+    ctx.fillStyle = style.point.fill;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, style.point.radius, style.point.arc1, style.point.arc2, true);
+    ctx.fill();
+    ctx.stroke();
+}
+
+// Draws one segment
+function drawSegment(ctx, style, segment, lineColor) {
+    p1 = segment.from;
+	p2 = segment.to;
+
+	// Line segment
+    ctx.lineWidth = style.line.width;
+	ctx.strokeStyle = lineColor;
+    ctx.beginPath();
+	ctx.moveTo(p1.x,p1.y);
+	ctx.lineTo(p2.x,p2.y);
+    ctx.stroke();
+			
+	// Draw vertices
+	drawPoint(ctx, style, segment.from);
+	drawPoint(ctx, style, segment.to);
+}
+
+// Draws all segments
+function drawSegments(ctx, style, segments) {
+	//For each pair draw pair after classifying intersection
+
+	for (var i = 0; i < segments.length; i=i+2) {
+		// Classify intersection and obtain color to draw pair of segments
+		var intersectionClass = classifyIntersection(segments[i], segments[i+1]);
+		reportResult(intersectionClass); // print description
+		var lineColor = colors[intersectionClass.type];
+		// Draw segment 
+		drawSegment(ctx, style, segments[i], lineColor);
+		drawSegment(ctx, style, segments[i+1], lineColor);
+	}
+}
+
+// Outputs the value of the intersection classification to the "results" HTML element
+function reportResult(intersectionClass) {
+	var text = "<font color='" + colors[intersectionClass.type] + "'>";
+	text = text + intersectionClass.type + ": " + intersectionClass.description;
+	text = text + "</font><br>";
+	document.getElementById("result").innerHTML = document.getElementById("result").innerHTML + text;
+}
+
+//========= Your code probably should be somewhere here =========//
+
+//Given 3 points the function return the Determinant
+
+function makeDeterminant(p,q,r) {
+    var d1 = q.x - p.x;
+    var d2 = r.x-p.x;
+    var d3 = q.y -p.y;
+    var d4 = r.y - p.y;
+    
+    var aux1 = d1*d4;
+    var aux2 = d2*d3;
+    
+    return aux1-aux2;
+}
+
+
+function distance(a,b) {
+    return Math.sqrt(Math.pow(a.x-b.x,2) + Math.pow(a.y -b.y,2));
+}
+// 
+function is_Between(a,r,b) {
+    return distance(a,r) + distance(b,r) == distance(a,b);
+}
+
+/* if return 0 they don't intersect.
+      return 1 they intersect
+      return 2 if are colinears and they superpose in a at leass one point
+      return 3 if are colinears but they don't superpose in anypoint.
+      return 4 if have one point on the other segment
+      return 5 if have one point or two points inline with other points put they're not intersect.
+*/
+function segmentsIntersect(s1,s2) {
+    var d1 = makeDeterminant(s1.from,s1.to,s2.from); // det (p,q,a);
+    var d2 = makeDeterminant(s1.from,s1.to,s2.to); //det(p,q,b);
+    var d3 = makeDeterminant(s2.to,s2.from,s1.from); // det(b,a,p);
+    var d4 = makeDeterminant(s2.to,s2.from,s1.to); // det(b,a,q);
+        
+    var aux1 = d1*d2;
+    var aux2 = d3*d4;
+    
+    if (aux1 < 0 && aux2 < 0) return 1;
+    
+    else if ( d1 == 0 && d2 == 0) {
+        if (is_Between(s1.from,s2.from,s1.to)) return 2;
+		else if ( is_Between(s1.from,s2.to,s1.to))return 2;
+		else return 3;
+    }
+    else if (aux1 == 0){
+		if (d1 == 0 ) {
+			if (is_Between(s1.from,s2.from,s1.to)) return 4;
+			else return 5;
+		}
+		else if ( is_Between(s1.from,s2.to,s1.to))return 4;
+		else return 5;
+	}	
+	
+	else if ( d3 == 0 && d4 == 0) {
+        if (is_Between(s2.from,s1.from,s2.to)) return 2;
+		else if ( is_Between(s2.from,s1.to,s2.to))return 2;
+		else return 3;
+    }
+    else if (aux2 == 0){
+		if (d3 == 0 ) {
+			if (is_Between(s2.from,s1.from,s2.to)) return 4;
+			else return 5;
+		}
+		else if ( is_Between(s2.from,s1.to,s2.to))return 4;
+		else return 5;
+	}	
+    else return 0;
+    
+
+}
+
+
+
+// TODO: Add your code here to classify all possible segment intersection types
+function classifyIntersection(s1, s2) {
+	var intersectionType, intersectionTypeDescription;
+	// Dummy code: an absurd classification criterion
+	
+	if (segmentsIntersect(s1,s2) == 0) {
+		intersectionType = 0;
+		intersectionTypeDescription = "No intersect";
+		}
+	else if (segmentsIntersect(s1,s2) == 1)  {
+		intersectionType = 1;
+		intersectionTypeDescription = "Intersecten";
+		}
+
+    else if (segmentsIntersect(s1,s2) == 2) {
+		intersectionType = 2;
+		intersectionTypeDescription = "Segments're colinears and they intersect";
+		} 
+	else if (segmentsIntersect(s1,s2) == 3) {
+		intersectionType = 3;
+		intersectionTypeDescription = "Segments're colinears and they don't intersect";
+		} 
+    else if (segmentsIntersect(s1,s2) == 4) {
+		intersectionType = 4;
+		intersectionTypeDescription = "Have point on the same line and intersect";
+		}
+    else {
+        intersectionType = 5;
+		intersectionTypeDescription = "Have point on the same line but no intersect";
+    }
+		
+	// Return object with two fields: a numbered type, and a description
+	return {"type": intersectionType, "description": intersectionTypeDescription} ;
+}
+
+
+</script>
+
+</body></html>
