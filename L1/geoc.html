@@ -141,12 +141,19 @@ function makeDeterminant(p,q,r) {
 }
 
 
-function distance(a,b) {
-    return Math.sqrt(Math.pow(a.x-b.x,2) + Math.pow(a.y -b.y,2));
-}
-// 
-function is_Between(a,r,b) {
-    return distance(a,r) + distance(b,r) == distance(a,b);
+function is_Between(a,c, b){
+    if ( a.x != b.x) {
+    //no es una recta vertical
+        if ( c.x < a.x && c.x < b.x) return false;
+        else if ( c.x > a.x && c.x > b.x) return false;
+    }
+    else {
+    // recta vertical
+        if ( c.y < a.y && c.y < b.y) return false;
+        else if ( c.y > a.y && c.y > b.y) return false;
+    }
+    return true;
+    
 }
 
 /* if return 0 they don't intersect.
@@ -157,10 +164,10 @@ function is_Between(a,r,b) {
       return 5 if have one point or two points inline with other points put they're not intersect.
 */
 function segmentsIntersect(s1,s2) {
-    var d1 = makeDeterminant(s1.from,s1.to,s2.from); // det (p,q,a);
-    var d2 = makeDeterminant(s1.from,s1.to,s2.to); //det(p,q,b);
-    var d3 = makeDeterminant(s2.to,s2.from,s1.from); // det(b,a,p);
-    var d4 = makeDeterminant(s2.to,s2.from,s1.to); // det(b,a,q);
+    var d1 = makeDeterminant(s1.from,s1.to,s2.from);// det(p,q,a);
+    var d2 = makeDeterminant(s1.from,s1.to,s2.to);  // det(p,q,b);
+    var d3 = makeDeterminant(s2.to,s2.from,s1.from);// det(b,a,p);
+    var d4 = makeDeterminant(s2.to,s2.from,s1.to);  // det(b,a,q);
         
     var aux1 = d1*d2;
     var aux2 = d3*d4;
