@@ -32,7 +32,7 @@ Note: show result by coloring each point differently depending on its situation 
 //========= Auxiliary objects and data =========//
 
 // Important: these are the input data sets
-var inputJSONs = [inputJSON1,inputJSON2,inputJSON3] ; 
+var inputJSONs = [inputJSON1,inputJSON2,inputJSON3] ;
 
 var points = inputJSONs[0].points; // Default dat set
 var triangle = inputJSONs[0].triangle;
@@ -71,7 +71,7 @@ function drawCanvas() {
   context1.clearRect(-canvas.width / 2, -canvas.height / 2, 2 * canvas.width, 2 * canvas.height);
   document.getElementById("result").innerHTML = "";
   // Draw stuff
-  drawPoints(context1, style, points, triangle); 
+  drawPoints(context1, style, points, triangle);
   drawTriangle(context1, style, triangle);
 
 }
@@ -104,7 +104,7 @@ function drawTriangle(ctx, style, t) {
 function drawPoints(ctx, style, points, triangle) {
 
 	for (var i = 0; i < points.length; i++) {
-	
+
 		var result = classifyPoint(points[i], triangle);
 		style.point.fill = result.color;
 		style.point.color = result.color;
@@ -137,10 +137,10 @@ function makeDeterminant(p,q,r) {
     var d2 = r.x-p.x;
     var d3 = q.y -p.y;
     var d4 = r.y - p.y;
-    
+
     var aux1 = d1*d4;
     var aux2 = d2*d3;
-    
+
     return aux1-aux2;
 }
 
@@ -152,12 +152,19 @@ function is_Vertex(p,t) {
   return is_SamePoint(p,t[0]) || is_SamePoint(p,t[1]) || is_SamePoint(p,t[2]);
 }
 
-function distance(a,b) {
-    return Math.sqrt(Math.pow(a.x-b.x,2) + Math.pow(a.y -b.y,2));
-}
-// 
-function is_Between(a,r,b) {
-    return distance(a,r) + distance(b,r) == distance(a,b);
+function is_Between(a,c, b){
+    if ( a.x != b.x) {
+    //no es una recta vertical
+        if ( c.x < a.x && c.x < b.x) return false;
+        else if ( c.x > a.x && c.x > b.x) return false;
+    }
+    else {
+    // recta vertical
+        if ( c.y < a.y && c.y < b.y) return false;
+        else if ( c.y > a.y && c.y > b.y) return false;
+    }
+    return true;
+
 }
 
 
@@ -177,13 +184,13 @@ function classifyPoint(p, triangle) {
     var d3 = makeDeterminant(triangle[2],triangle[0],p);
 
     // Determine if is inside triangle.
-    
+
     if ( d1 < 0 && d2 < 0 && d3 < 0) {
-      color = colors[1]; 
+      color = colors[1];
       description = "This point is inside of triangle, not in the perimeter";
     }
     else if ( d1 > 0 && d2 > 0 && d3 > 0)  {
-      color = colors[1]; 
+      color = colors[1];
       description = "This point is inside of triangle, not in the perimeter";
     }
 
@@ -200,7 +207,7 @@ function classifyPoint(p, triangle) {
       description = "This point is on a edge";
     }
   }
-	
+
 	return {"color": color, "description": description} ;
 }
 

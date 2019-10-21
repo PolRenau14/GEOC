@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\graphicspath{ {./Grafics/}}
+
+\title { Teoria Geoc: Sweep-line algorithm}
+\date { Quadrimestre Tardor 2019-2020}
+\author {Pol Renau Larrod\'e}
+
+\begin{document}
+  \maketitle
+  \newpage
+
+  \section {Intersecting line-segment}
+
+  Important observation of sweep-line.
+
+
+  Observation1
+  \\
+  If two line-segments have disjoint projections onto a given line, then they're disjoint.
+
+  \\
+
+  Observation2
+  \\
+  whern sweepomg a set of line-segments with a line, two Intersecting line-segments need to be consecutive in the sweeping line right before their intersection point.
+
+  \section{Sweep-line algorithm}
+
+  A straight line scans the scene, and allows detecting and constructing the desired elements, leaving the problems solved behind it. the sweeping proces is discretized:
+
+  \\
+  Essential elements:
+
+  * Sweep line:
+    Data structure storing the information of the portion of the scene intersected by the sweep line. Still updated all time.
+
+  * Events queue:
+    Priority queue keeping the information of the locations where the sweepline changes and needs to be updated. At most of times (start point and endpoints)
+
+  * Output data structure
+
+\end{document}
