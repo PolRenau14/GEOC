@@ -169,9 +169,25 @@ function makeDeterminant(circle_points,p){
 
 //========= Your code somewhere here =========//
 
+function decideOrientation(circle_points) {
+  var aux1 = circle_points[0].x * circle_points[1].y
+  var aux2 = circle_points[1].x * circle_points[2].y
+  var aux3 = circle_points[2].x * circle_points[0].y
+  var sum = aux1 + aux2 + aux3
+
+  var raux1 = circle_points[0].y * circle_points[1].x
+  var raux2 = circle_points[1].y * circle_points[2].x
+  var raux3 = circle_points[2].y * circle_points[0].x
+
+  var rest = raux1 + raux2 + raux3
+
+  return sum - rest
+}
+
 // TODO: Add your code here to classify the point w.r.t. the circle given by three points
 function classifyPoint(p, circle_points) {
-  d = makeDeterminant(circle_points,p)
+  o = decideOrientation(circle_points)
+  d = makeDeterminant(circle_points,p) *o
 
 	var color = colors[1];
 	var description = "Out the circle";
