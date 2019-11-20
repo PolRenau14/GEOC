@@ -10,6 +10,10 @@ DCEL = {
 	edges: [],
 }
 
+NextTriangle = {
+  triangles: [], // només necesitem un tamany igual al nombre de cares, (triangles), i per cada una posem quina posició li correspon(face)
+}
+
 // MODELS:
 
 // face = {
@@ -32,10 +36,10 @@ DCEL = {
 function computeMinMaxX(points){ //Returns min and max points by x coordinate and returns them a little bit further
 	var min = points[0];
 	var max = points[0];
-	
+
 	for(var i = 1; i < points.length; ++i){
 		if(points[i].x < min.x) min = points[i];
-		else if(points[i].x > max.x) max = points[i];				
+		else if(points[i].x > max.x) max = points[i];
 	}
 	return {min: {x: min.x - (max.x-min.x)/2, y: min.y}, max: {x: max.x + (max.x-min.x)/4, y: max.y}};
 }
@@ -46,7 +50,7 @@ function computeSupportingLines(p, points){
 
 	for(var i = 1; i < points.length; ++i){
 		if(orientationTest(p, left, points[i]) == "left") left = points[i];
-		else if(orientationTest(p, right, points[i]) == "right") right = points[i];				
+		else if(orientationTest(p, right, points[i]) == "right") right = points[i];
 	}
 	return {left: left, right: right};
 }
@@ -66,17 +70,17 @@ function orientationTest(p, q, r){
 
 function findTriangle(faceIndex, firstEdgeIndex){ //Through the face index we find all the edges forming the triangle
 
-	var edges = new Array(3); 
-	var vertices = new Array(3); 
+	var edges = new Array(3);
+	var vertices = new Array(3);
 
 	if(firstEdgeIndex)
 		edges[0] = firstEdgeIndex; //First edge given by input
 	else
 		edges[0] = DCEL.faces[faceIndex].edge; //First edge referenciat per la face on es troba p
-	
+
 	//Edge we are looking at
 	var actualEdge = DCEL.edges[edges[0]]; //We take the 1st edge of the triangle from the face
-	
+
 	//2nd edge of the triangle and first 2 vertices
 	if(actualEdge.faceLeft == faceIndex){
 		edges[2] = actualEdge.edgePrevious;
@@ -127,7 +131,7 @@ function pointInTriangle(p, edges, f) { //Shall return true if point is in trian
 		return orientationTest(DCEL.vertices[actualEdge.vertexEnd], DCEL.vertices[actualEdge.vertexBegin], p);
 	});
 
-	if(orientations[0] == "left" && orientations[1] == "left" && orientations[2] == "left") 
+	if(orientations[0] == "left" && orientations[1] == "left" && orientations[2] == "left")
 		return true; //Point inside triangle
 	else if((orientations[0] == "inline" && orientations[1] == orientations[2]) || (orientations[1] == "inline" && orientations[2] == orientations[0]) || (orientations[2] == "inline" && orientations[0] == orientations[1]))
 		return true; //Point on triangle boundary
@@ -137,7 +141,7 @@ function pointInTriangle(p, edges, f) { //Shall return true if point is in trian
 function classifyIntersection(a1, a2, b1, b2) {
 
 	var throughVertex = null;
-	
+
 	var orientations = [orientationTest(a1, a2, b1), orientationTest(a1, a2, b2),  orientationTest(b1, b2, a1),  orientationTest(b1, b2, a2)];
 	var zeros = orientations.reduce((prev, curr)=>{if(curr == "inline") ++prev; return prev;}, 0);
 
@@ -150,7 +154,7 @@ function classifyIntersection(a1, a2, b1, b2) {
 		else if(orientations[1] == 'inline' && orientations[2] != orientations[3]){
 			intersectionType = "INTERIOR POINT";
 			throughVertex = 1;
-		} 
+		}
 		else{ // No intersection
 			intersectionType = "NONE";
 		}
@@ -161,7 +165,7 @@ function classifyIntersection(a1, a2, b1, b2) {
 	else{ //NO INTERSECTION
 		intersectionType = "NONE";
 	}
-		
+
 	// Return object with two fields: a numbered type, and a description
 	return {type: intersectionType, vertex: throughVertex} ;
 }
@@ -219,9 +223,9 @@ function addToDCEL(p, faceIndex){ //ADDs a point in a known face
 	if(onEdge == -1){ //Point not on edge
 		//ADD 2 new faces
 		DCEL.faces.push(
-			{edge: triangle.edges[1]}, 
+			{edge: triangle.edges[1]},
 			{edge: triangle.edges[2]});
-		
+
 		//ADD triangle faces in triangle in CCW and in the same order for faster understanding and accessibility
 		triangle.faces = [faceIndex, DCEL.faces.length-2, DCEL.faces.length-1];
 
@@ -270,7 +274,7 @@ function addToDCEL(p, faceIndex){ //ADDs a point in a known face
 			faceB = DCEL.edges[onEdge].faceLeft;
 
 		triangleB = findTriangle(faceB, onEdge);
-		
+
 		//Define Quadrilater union of the 2 triangles in CCW order starting by edge pointed by onEdge
 		var quadrilater = {
 			faces: [faceIndex, DCEL.faces.length, DCEL.faces.length+1, faceB],
@@ -354,7 +358,7 @@ function findAndAddPoint(newPoint, auxiliaryPoint){
 			//Check all faces and edges incident to vertex
 			var initialEdge = actualVertex.vertex.edge;
 			var actualEdge;
-			if(DCEL.edges[initialEdge].vertexBegin == actualVertex.vertexIndex){ 
+			if(DCEL.edges[initialEdge].vertexBegin == actualVertex.vertexIndex){
 				if(visitedFaces.indexOf(DCEL.edges[initialEdge].faceLeft) == -1){
 					actualVertex.faces.push(DCEL.edges[initialEdge].faceLeft);
 					actualVertex.edges.push(initialEdge);
@@ -370,7 +374,7 @@ function findAndAddPoint(newPoint, auxiliaryPoint){
 			}
 
 			while(actualEdge != initialEdge){ //While we don't check the same edge twice
-				if(DCEL.edges[actualEdge].vertexBegin == actualVertex.vertexIndex){ 
+				if(DCEL.edges[actualEdge].vertexBegin == actualVertex.vertexIndex){
 					if(visitedFaces.indexOf(DCEL.edges[actualEdge].faceLeft) == -1){
 						actualVertex.faces.push(DCEL.edges[actualEdge].faceLeft);
 						actualVertex.edges.push(actualEdge);
@@ -403,7 +407,7 @@ function findAndAddPoint(newPoint, auxiliaryPoint){
 
 				for(var i = 0; i < edgesToCheck.length; ++i){ //Check the edges for intersections
 					var intersection = classifyIntersection(newPoint, auxiliaryPoint.vertex, DCEL.vertices[DCEL.edges[edgesToCheck[i]].vertexBegin], DCEL.vertices[DCEL.edges[edgesToCheck[i]].vertexEnd]);
-					
+
 					if(intersection.type == "CLASSIC"){
 						fromEdge = edgesToCheck[i];
 						if(DCEL.edges[fromEdge].faceLeft == actualVertex.faces[i])
@@ -444,7 +448,7 @@ function findAndAddPoint(newPoint, auxiliaryPoint){
 
 				for(var i = 0; i < 2; ++i){ //Check the edges for intersections
 					var intersection = classifyIntersection(newPoint, auxiliaryPoint.vertex, DCEL.vertices[DCEL.edges[edgesToCheck[i]].vertexBegin], DCEL.vertices[DCEL.edges[edgesToCheck[i]].vertexEnd]);
-					
+
 					if(intersection.type == "CLASSIC"){
 
 						fromEdge = edgesToCheck[i];
@@ -484,23 +488,23 @@ function computeTriangulation(points) {
 
 	var enclosingTriangle = doEnclosingTriangle(points);
 	// var enclosingTriangle = [{x:-30,y:0}, {x:60,y:-12}, {x:60,y:45}];
-	
+
 	//Concatenate the enclosing triangle at the beginning of the points array
 	points.unshift(enclosingTriangle[0], enclosingTriangle[1], enclosingTriangle[2]);
+  // los tres pirmeros puntos són los añadidos
 
 	//Initialize DCEL with known enclosing triangle
 	initDCEL(enclosingTriangle[0], enclosingTriangle[1], enclosingTriangle[2]);
 
-	//ADD first point
+	//ADD first point el primer punt dels donats.
 	addToDCEL(points[3], 1);
 
-	
+
 	//Take first point as auxiliary and all i'ts information
 	auxiliaryPoint = {
 		vertexIndex: 3,
 		vertex: DCEL.vertices[3],
 	}
-
 	//TODO: find point in space through auxiliary
 	// - Look if the point is in any of the incident triangles
 	// - If not until we find in which triangle it is located we follow the line between point and auxiliary
@@ -512,8 +516,11 @@ function computeTriangulation(points) {
 
 	//READ triangles from DCEL
 	var outputTriangles = new Array(DCEL.faces.length-1);
-
-	var triangle; 
+  var aux = new Array(DCEL.faces.length-1);
+  console.log(aux)
+  console.log(outputTriangles)
+  console.log(DCEL.faces)
+	var triangle;
 	for(var i = 1; i < DCEL.faces.length; ++i){
 		triangle = findTriangle(i);
 		outputTriangles[i-1] = triangle.vertices;
@@ -521,6 +528,3 @@ function computeTriangulation(points) {
 
 	return outputTriangles;
 }
-
-
-

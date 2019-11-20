@@ -10,7 +10,7 @@
 
 <!------ TO DO: Modify this line to switch between input files ------>
 <!---<script type="text/javascript" src="toy_example.json.js"></script>--->
-<script type="text/javascript" src="Lanzarote.json.js"></script>
+<script type="text/javascript" src="toy_example.json.js"></script>
 
 <!---- External library to handle zoom and pan ---->
 <script type="text/javascript" src="zoompan.js"></script>
@@ -50,9 +50,9 @@ var triangles; // Used to store the resulting triangles of the triangulation
 
 // Computes the point set extents
 function computeExtents(points) {
-	
+
 	var extents = {"xmin":Number.MAX_VALUE, "xmax":-Number.MAX_VALUE, "ymin":Number.MAX_VALUE, "ymax":-Number.MAX_VALUE};
-	
+
 	for (var i = 0; i < points.length; i++) {
 		var p = points[i];
 		if (p.x < extents.xmin) {
@@ -68,7 +68,7 @@ function computeExtents(points) {
 			extents.ymax = p.y;
 			}
 	}
-			
+
 	return extents;
 }
 
@@ -97,7 +97,7 @@ function drawPoint(ctx, style, origP) {
     ctx.arc(p.x, p.y, style.point.radius, style.point.arc1, style.point.arc2, true);
     ctx.fill();
     ctx.stroke();
-	
+
 	// Uncomment to draw label of each point next to it
 	//ctx.fillText(JSON.stringify(origP), p.x+5*style.point.width, p.y);
 }
@@ -108,11 +108,11 @@ function drawTriangles(ctx) {
 		for(i = 0; i<triangles.length; i++) {
 				ctx.beginPath();
 				ctx.moveTo(transformPointToCanvas(points[triangles[i][0]]).x, transformPointToCanvas(points[triangles[i][0]]).y);
-				
+
 				ctx.lineTo(transformPointToCanvas(points[triangles[i][1]]).x, transformPointToCanvas(points[triangles[i][1]]).y);
-				
+
 				ctx.lineTo(transformPointToCanvas(points[triangles[i][2]]).x, transformPointToCanvas(points[triangles[i][2]]).y);
-				
+
 				ctx.closePath();
 				ctx.stroke();
 			  }
@@ -176,7 +176,7 @@ function doTriangulate() {
 	var t0 = performance.now();
 	triangles = computeTriangulation(points); // This function is in triangulation.js
 	var t1 = performance.now();
-	
+
 	// Log time
 	var string = "Vertices: " + points.length + ". Triangles: " + triangles.length;
 	string += ". Triangulation time: " + (t1 - t0).toFixed(0) + " milliseconds.";
@@ -206,4 +206,4 @@ function doTriangulate() {
 <p><b>Controls</b>: Drag to pan. Click to zoom at that location. Shift-click to zoom out. Mousewheel up/down over the canvas to zoom in to/out from that location.
 <br><b>Note</b>: points are drawn with flipped y coordinates to simulate upwards y-axis. See function transformPointToCanvas().</p>
 
-</html> 
+</html>
