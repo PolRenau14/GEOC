@@ -5,13 +5,29 @@ DCEL = {
 }
 
 tree = {
-	triangle: [], //The vertex of the triangle
+	triangle: [], //The edges of the triangle
 	face: 0, //At the beginning it points to infinity
-	child: [],
-
-
+	child: []
 }
 
+// MODELS:
+
+// face = {
+// 	edge: 0
+// }
+// vertex = {
+// 	x: 0.0,
+// 	y: 0.0,
+// 	edge: 0
+// }
+// edge = {
+// 	vertexBegin: 0,
+// 	vertexEnd: 1,
+// 	faceLeft: 0,
+// 	faceRight: 1,
+// 	edgePrevious: 0,
+// 	edgeNext: 1
+// }
 
 function computeMinMaxX(points){ //Returns min and max points by x coordinate and returns them a little bit further
 	var min = points[0];
@@ -102,6 +118,22 @@ function pointOnEdge(p, edges, f) { //Shall return the number of the edge on whi
 	return -1;
 }
 
+function pointInTriangle(p, edges, f) { //Shall return true if point is in triangle or boundary, else returns false
+
+	//Do all orientation tests of p with the 3 edges, all orientation tests are done in counter-clockwise so in the triangle means all edges have p on left
+	var orientations = edges.map((edge)=>{
+		var actualEdge = DCEL.edges[edge];
+		if(actualEdge.faceLeft == f) return orientationTest(DCEL.vertices[actualEdge.vertexBegin], DCEL.vertices[actualEdge.vertexEnd], p);
+		return orientationTest(DCEL.vertices[actualEdge.vertexEnd], DCEL.vertices[actualEdge.vertexBegin], p);
+	});
+
+	if(orientations[0] == "left" && orientations[1] == "left" && orientations[2] == "left")
+		return true; //Point inside triangle
+	else if((orientations[0] == "inline" && orientations[1] == orientations[2]) || (orientations[1] == "inline" && orientations[2] == orientations[0]) || (orientations[2] == "inline" && orientations[0] == orientations[1]))
+		return true; //Point on triangle boundary
+	else return false; //Point not in triangle
+}
+
 function classifyIntersection(a1, a2, b1, b2) {
 
 	var throughVertex = null;
@@ -176,14 +208,14 @@ function initDCEL(p0, p1, p2){
 /*
 	Returns the leaf that holds the face
 */
-function getLeaf(face, node){
+function getLeafWithFace(face, node){
 	if(!node)
 		node = tree;
 	if(node.face == face && node.child.length == 0)
 		return node;
 	else{
 		for(var i=0; i<node.child.length; i++){
-			nd = getLeaf(face, node.child[i]);
+			nd = getLeafWithFace(face, node.child[i]);
 			if(nd != null)
 				return nd;
 		}
@@ -191,15 +223,7 @@ function getLeaf(face, node){
 	return null;
 }
 
-function addNode(node,triangles, faceID){
-	node.child.push({
-		triangle: triangles,
-		face: faceID,
-		child: []
-	});
-}
-
-function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and updates the hierarchy
+function addToDCEL(p, faceIndex, node){ //ADDs a point in a known face and updates the hierarchy
 	//ADD vertex
 	DCEL.vertices.push({x: p.x, y: p.y, edge: DCEL.edges.length}); //We assign the next new edge that we will add since we know it's incident
 
@@ -211,7 +235,6 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 
 	if(onEdge == -1){ //Point not on edge
 		//ADD 2 new faces
-
 		DCEL.faces.push(
 			{edge: triangle.edges[1]},
 			{edge: triangle.edges[2]});
@@ -253,14 +276,18 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 		}
 		//Update hierarchy
 		for(var i=0; i<3; i++){
-			addNode(nodeA,findTriangle(triangle.faces[i]).vertices,triangle.faces[i])
+		node.child.push({
+			triangle: findTriangle(triangle.faces[i]).vertices,
+			face: triangle.faces[i],
+			child: []
+		});
 		}
 }	else{ //Point on returned edge and edge is obliged to be an internal edge
 		//Find the 2 affected triangles
 		var triangleA = findTriangle(faceIndex, onEdge);
 		var triangleB;
 		var faceB;
-		var nodeB;
+		var node2;
 
 		if(DCEL.edges[onEdge].faceLeft == faceIndex)
 			faceB = DCEL.edges[onEdge].faceRight;
@@ -268,8 +295,7 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 			faceB = DCEL.edges[onEdge].faceLeft;
 
 		triangleB = findTriangle(faceB, onEdge);
-		nodeB = getLeaf(faceB);
-		//Obtenim el node del arbre de la cara B.
+		node2 = getLeafWithFace(faceB);
 		//Define Quadrilater union of the 2 triangles in CCW order starting by edge pointed by onEdge
 		var quadrilater = {
 			faces: [faceIndex, DCEL.faces.length, DCEL.faces.length+1, faceB],
@@ -335,28 +361,70 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 			}
 		}
 
-
-		if(nodeB == null){
+		node.child.push({
+					triangle: triangleA.vertices,
+					face: faceIndex,
+					child: []
+				});
+		node.child.push({
+					triangle: findTriangle(DCEL.faces.length-2).vertices,
+					face: DCEL.faces.length-2,
+					child: []
+				});
+		if(node2 == null){
 			console.log("Something went wrong :D");
 			return;
 		}
-		addNode(nodeA,triangleA.vertices,faceIndex);
-		addNode(nodeA,findTriangle(DCEL.faces.length-2).vertices,DCEL.faces.length-2);
-		addNode(nodeB,triangleB.vertices,faceB);
-		addNode(nodeB,findTriangle(DCEL.faces.length-1).vertices,DCEL.faces.length-1);
+		node2.child.push({
+					triangle: triangleB.vertices,
+					face: faceB,
+					child: []
+				});
+		node2.child.push({
+					triangle: findTriangle(DCEL.faces.length-1).vertices,
+					face: DCEL.faces.length-1,
+					child: []
+				});
 	}
 }
 
-function pointInTriangle(p, triangle) {
+/*
+	This method computes the determinant of the third component belonging to the cross product between v1 and v2
+*/
+function determinant(v1, v2) {
+    return v1.x * v2.y - v1.y * v2.x;
+}
 
-	var a = orientationTest(DCEL.vertices[triangle[0]], DCEL.vertices[triangle[1]], p);
-	var b = orientationTest(DCEL.vertices[triangle[1]], DCEL.vertices[triangle[2]], p);
-	var c = orientationTest(DCEL.vertices[triangle[2]], DCEL.vertices[triangle[0]], p);
-	if (a == b && b == c) return true; //Interior point! Si tene
-	else if ((a == "inline" && (b == c)) || (b == "inline" && (a == c)) || (c=="inline" && (a==b))) return true;
-	//Point on one edge.
-	// no cal revisar si son dos vertex inline, ja que no es donarà el cas de que un punt
-	// estigui just a la mateixa pos que un altre, serien el mateix punt
+/*
+	This method returns 0 if the point is at the center, 1 if it is at the left and -1 if is at the right of the segment defined by t1 and t2.
+*/
+function pointRelativeToSegment(t1, t2, p) {
+    let v1 = {
+        'x': t2.x - t1.x,
+        'y': t2.y - t1.y
+    };
+    let v2 = {
+        'x': t1.x - p.x,
+        'y': t1.y - p.y
+    };
+    var a = determinant(v1, v2);
+    if (a != 0) a = a / Math.abs(a);
+    return a;
+}
+/*
+	From lab2, I use directly the points in order to avoid problems with edge-orientation inconsistencies.
+*/
+function pointInTriangleV2(p, triangle) {
+	triangle.map((x)=>{
+		return DCEL.vertices[x];
+	}); //This mapping function adapts the session2 algorithm to the DCEL
+
+	var a = pointRelativeToSegment(DCEL.vertices[triangle[0]], DCEL.vertices[triangle[1]], p);
+	var b = pointRelativeToSegment(DCEL.vertices[triangle[1]], DCEL.vertices[triangle[2]], p);
+	var c = pointRelativeToSegment(DCEL.vertices[triangle[2]], DCEL.vertices[triangle[0]], p);
+	var k = Math.abs(a)+Math.abs(b)+Math.abs(c); //Sum of the absolute value of the 3 relative orientations. This way we can know which relative positions are collinear without worrying about integer cancelations.
+	if (Math.abs(a + b + c) - 3 == 0) return true; //Interior point!
+	else if (Math.abs(a + b + c) - 2 == 0) return true;
 	return false;
 }
 
@@ -366,7 +434,7 @@ function pointInTriangle(p, triangle) {
 function findHierarchyTriangle(p, h){
 	if(!h) h = tree;
 
-	if(pointInTriangle(p,h.triangle)){
+	if(pointInTriangleV2(p,h.triangle)){
 		if(h.child.length == 0){ //It's a leaf
 			return h;
 		}
@@ -412,13 +480,12 @@ function computeTriangulation(points) {
 		findAndAddPoint(points[i]);
 
 	//READ triangles from DCEL
-	var lenOutput = DCEL.faces.length-1;
-	var outputTriangles = new Array(lenOutput);
+	var outputTriangles = new Array(DCEL.faces.length-1);
 
 	var triangle;
-	for(var i = 0; i < lenOutput; ++i){
-		triangle = findTriangle(i+1);
-		outputTriangles[i] = triangle.vertices;
+	for(var i = 1; i < DCEL.faces.length; ++i){
+		triangle = findTriangle(i);
+		outputTriangles[i-1] = triangle.vertices;
 	}
 
 	return outputTriangles;
