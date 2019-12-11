@@ -250,11 +250,9 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 				DCEL.edges[triangle.edges[i]].edgeNext = triangle.newEdges[i];
 				DCEL.edges[triangle.edges[i]].faceRight = triangle.faces[i];
 			}
-		}
-		//Update hierarchy
-		for(var i=0; i<3; i++){
 			addNode(nodeA,findTriangle(triangle.faces[i]).vertices,triangle.faces[i])
 		}
+
 }	else{ //Point on returned edge and edge is obliged to be an internal edge
 		//Find the 2 affected triangles
 		var triangleA = findTriangle(faceIndex, onEdge);
@@ -270,6 +268,10 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 		triangleB = findTriangle(faceB, onEdge);
 		nodeB = getLeaf(faceB);
 		//Obtenim el node del arbre de la cara B.
+		if(nodeB == null){
+			console.log("Se perendio esta vaina");
+			return;
+		}
 		//Define Quadrilater union of the 2 triangles in CCW order starting by edge pointed by onEdge
 		var quadrilater = {
 			faces: [faceIndex, DCEL.faces.length, DCEL.faces.length+1, faceB],
@@ -333,17 +335,15 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 				DCEL.edges[quadrilater.boundaryEdges[i]].faceRight = quadrilater.faces[i];
 				DCEL.edges[quadrilater.boundaryEdges[i]].edgeNext = quadrilater.internalEdges[i];
 			}
+			if ( i < 2 ) {
+				addNode(nodeA,findTriangle(quadrilater.faces[i]).vertices,quadrilater.faces[i])
+			}
+			else {
+
+				addNode(nodeB,findTriangle(quadrilater.faces[i]).vertices,quadrilater.faces[i])
+			}
 		}
 
-
-		if(nodeB == null){
-			console.log("Something went wrong :D");
-			return;
-		}
-		addNode(nodeA,triangleA.vertices,faceIndex);
-		addNode(nodeA,findTriangle(DCEL.faces.length-2).vertices,DCEL.faces.length-2);
-		addNode(nodeB,triangleB.vertices,faceB);
-		addNode(nodeB,findTriangle(DCEL.faces.length-1).vertices,DCEL.faces.length-1);
 	}
 }
 
@@ -352,7 +352,7 @@ function pointInTriangle(p, triangle) {
 	var a = orientationTest(DCEL.vertices[triangle[0]], DCEL.vertices[triangle[1]], p);
 	var b = orientationTest(DCEL.vertices[triangle[1]], DCEL.vertices[triangle[2]], p);
 	var c = orientationTest(DCEL.vertices[triangle[2]], DCEL.vertices[triangle[0]], p);
-	if (a == b && b == c) return true; //Interior point! Si tene
+	if (a == b && b == c) return true; //Interior point!
 	else if ((a == "inline" && (b == c)) || (b == "inline" && (a == c)) || (c=="inline" && (a==b))) return true;
 	//Point on one edge.
 	// no cal revisar si son dos vertex inline, ja que no es donarà el cas de que un punt
@@ -361,7 +361,13 @@ function pointInTriangle(p, triangle) {
 }
 
 /*
-	Returns the leaf that contains the point. Otherwise, returns null.
+	Idea no implementada per fer-lo balancejat:
+		donar als nodes del arbre, un id arbitrari i que faci que el arbre sigui balancejat
+		també tenir un diccionari que faci referència de ID real a ID falsa
+		i un altre diccionari al revés ID falsa a ID real
+		per tal de tenir un control.
+		No esta implementat, però es una idea futura, ja que aleshores el cost seria
+		de nlog(n) en lloc de n² en el pitjor cas.
 */
 function findHierarchyTriangle(p, h){
 	if(!h) h = tree;
@@ -382,10 +388,11 @@ function findHierarchyTriangle(p, h){
 
 function findAndAddPoint(newPoint){ //Finds the leaf in the triangle hierarchy that contains the point and adds it to the DCEL.
 	var h = findHierarchyTriangle(newPoint);
-	if(h!=null)
-		addToDCEL(newPoint, h.face, h);
-	else
-		console.log("Point out of bounds!");
+	if(h==null)	{
+			DCEL.vertices.push({x: null, y: null, edge: null});
+	}
+
+	else	addToDCEL(newPoint, h.face, h);
 }
 
 function initTree(p1,p2,p3){
@@ -405,13 +412,11 @@ function computeTriangulation(points) {
 	initDCEL(enclosingTriangle[0], enclosingTriangle[1], enclosingTriangle[2]);
 	//Initialize hierarchical triangle structure
 	initTree(0, 1, 2);
-	//ADD first point
-	//addToDCEL(points[3], 1);
+	console.log(findTriangle(1).vertices)
 
 	for(var i=3; i<points.length; ++i)
 		findAndAddPoint(points[i]);
 
-	//READ triangles from DCEL
 	var lenOutput = DCEL.faces.length-1;
 	var outputTriangles = new Array(lenOutput);
 

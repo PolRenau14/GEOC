@@ -10,13 +10,13 @@
 
 <!------ TO DO: Modify this line to switch between input files ------>
 <!---<script type="text/javascript" src="toy_example.json.js"></script>--->
-<script type="text/javascript" src="Lanzarote-degen.json.js"></script>
+<script type="text/javascript" src="toy_example.json.js"></script>
 
 <!---- External library to handle zoom and pan ---->
 <script type="text/javascript" src="zoompan.js"></script>
 
 <!---- This is were your triangulation code will be ---->
-<script type="text/javascript" src="enunciat.js"></script>
+<script type="text/javascript" src="../L5/triangulation.js"></script>
 
 <script type="text/javascript">
 //========= Auxiliary objects and data =========//
@@ -176,7 +176,7 @@ function doTriangulate() {
 	var t0 = performance.now();
 	triangles = computeTriangulation(points); // This function is in triangulation.js
 	var t1 = performance.now();
-
+  console.log(points)
 	// Log time
 	var string = "Vertices: " + points.length + ". Triangles: " + triangles.length;
 	string += ". Triangulation time: " + (t1 - t0).toFixed(0) + " milliseconds.";

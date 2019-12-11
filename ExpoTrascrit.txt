@@ -1,0 +1,92 @@
+Hi my name is Pol Renau,
+ and I'm gonna explain some about Robot Arm Motion.
+
+ at first if in This problem  ther's no restrictions, it is NP-Hard, but  We
+ reduce this complexity adding some restrictions.
+
+ then Supose a stage with no obstacles, and no angle Restrictions. Then Every
+Joint can have angle betwen(0,360)
+With this the problem will be polinomial. For all presentation we gonna
+supose this stage as the reality.
+
+Input: arm A, and point P.
+Output: Is P reachable from A? If is it give one convinations of Joins Angles
+that is Solution.
+
+How to define a robot arm?
+Every link in arobot arm is defined as Li = length of this link
+
+Robot arm have a Joints that are the points where 2 consecutive links ar conected.
+Ji is equals angle at this join. I is between 0 and  n.
+Ther's n+1 Joints.
+
+Arm A is defined by a list of lenght links.
+
+at first I eplain som Lemas that are important for get the first idea about
+problem.
+
+First:
+The reachability region for an n-link arm is an annulus centred
+on the origin.
+
+Second:
+The reachability region for an n-link arm is an origin-centred
+annulus with outer radius ro  =  summ of all links and inner radius
+ ri=0 if the longest link length lM is less than half the total
+ length of the links, and  inner radius is equals to
+ longest link minus summ of others,  otherwise
+
+ Third:
+The region of reachability for an arm is independent of the order
+ in which the links are arranged.
+ As we can see in this image  can see every link like a vector, and then arm A reach point P,
+ if the Vector adition of all links reach P. It's know that vector adition is conmutative, then,
+ we shouldn't care about the order of the links.
+
+ After this We can start up with the problem
+ Problem with 2-Links.
+ Solve this problem is very easy. We define C1 as a circle centred on J0 with radi L1, and C2 centred on P
+ with radi length of second segment.
+ The solution of the problem is where C1 and C2 intersect.
+ We see that there're 4 possible solutions. 1 intersection, 2 intersections, No intersection then ther's no
+ solution for the problem, and infinite solutions for solve this problem,in this case
+  we define J0 = 0, but J0 can be any value.
+
+Now  Increment dificult of the problem,
+ Problem with 3 links.
+ It's possible to reduce every 3 Link problem to 2-link Problem
+ Aplylling the second lema, we  know that 3-link problem have this possible solutions in 2-links
+ First case:
+ first segment is l sub 1 plus l two and the other segment is l3
+ Second case:
+ first segment is l sub one and other segment is summ o f segments 2 and 3.
+ Third case:
+ Jsub 0 is 0, and now the new origin is (origin.x+length link one, origin.y) and the problem have only the Links
+ lsub 2 and l sub three.
+
+
+ Make problem for general N
+ Reduce N-link to 3link
+And Aplylling the lemma four reduce this to 2 link problem.
+
+Lemma (5)	If an n-linked arm A can reach a point, it can reach it with at most two joints
+“kinked”: only two joints among J1, .. , Jn-1 have nonzero angles. The two joints may be
+chosen to be those at either end of the “median link”: the link LM such that  ∑i =1 m-1 li is
+less than or equal to half the total length of the links, but ∑i =1 m li is more than half.
+
+For proof this lemma we decompose the problem in two cases:
+
+First case internal radi is > 0:
+ and apling the lema 2, ri = Lm - sum of all except segment M.
+ cause as we can se here we can freze Longest link and comute others. As we can see in this picture,
+ we need at most 2 Joints diferent 0.
+
+Second case internal radi equals 0.
+ For this case it's known tht ther's no link that are longer than the half of total lenght.
+ Thers a lot of possible solutions for create a 3 segments that noone were longer than
+ the total half. But we gonna make a easy way. Start from the first segment, summ oll of them
+ while the summ f them is less than the half, as you can see in this picture.
+ This will be the first link, the second link will be the next of the last link in the new first link,
+ in the drat you can see that is the fourth link, with length equals two,
+ and the third link is the summ of the others.
+  And Aplylling the lema 2 we know that the reachability region will be the same.
