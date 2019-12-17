@@ -1,3 +1,5 @@
+
+
 DCEL = {
 	faces: [],
 	vertices: [],
@@ -5,13 +7,29 @@ DCEL = {
 }
 
 tree = {
-	triangle: [], //The vertex of the triangle
+	triangle: [], //The edges of the triangle
 	face: 0, //At the beginning it points to infinity
-	child: [],
-
-
+	child: []
 }
 
+// MODELS:
+
+// face = {
+// 	edge: 0
+// }
+// vertex = {
+// 	x: 0.0,
+// 	y: 0.0,
+// 	edge: 0
+// }
+// edge = {
+// 	vertexBegin: 0,
+// 	vertexEnd: 1,
+// 	faceLeft: 0,
+// 	faceRight: 1,
+// 	edgePrevious: 0,
+// 	edgeNext: 1
+// }
 
 function computeMinMaxX(points){ //Returns min and max points by x coordinate and returns them a little bit further
 	var min = points[0];
@@ -49,7 +67,7 @@ function orientationTest(p, q, r){
 }
 
 function findTriangle(faceIndex, firstEdgeIndex){ //Through the face index we find all the edges forming the triangle
-  console.log(faceIndex)
+
 	var edges = new Array(3);
 	var vertices = new Array(3);
 
@@ -100,6 +118,22 @@ function pointOnEdge(p, edges, f) { //Shall return the number of the edge on whi
 	for(var i = 0; i < 3; ++i)
 		if(orientations[i] == "inline") return edges[i];
 	return -1;
+}
+
+function pointInTriangle(p, edges, f) { //Shall return true if point is in triangle or boundary, else returns false
+
+	//Do all orientation tests of p with the 3 edges, all orientation tests are done in counter-clockwise so in the triangle means all edges have p on left
+	var orientations = edges.map((edge)=>{
+		var actualEdge = DCEL.edges[edge];
+		if(actualEdge.faceLeft == f) return orientationTest(DCEL.vertices[actualEdge.vertexBegin], DCEL.vertices[actualEdge.vertexEnd], p);
+		return orientationTest(DCEL.vertices[actualEdge.vertexEnd], DCEL.vertices[actualEdge.vertexBegin], p);
+	});
+
+	if(orientations[0] == "left" && orientations[1] == "left" && orientations[2] == "left")
+		return true; //Point inside triangle
+	else if((orientations[0] == "inline" && orientations[1] == orientations[2]) || (orientations[1] == "inline" && orientations[2] == orientations[0]) || (orientations[2] == "inline" && orientations[0] == orientations[1]))
+		return true; //Point on triangle boundary
+	else return false; //Point not in triangle
 }
 
 function classifyIntersection(a1, a2, b1, b2) {
@@ -176,30 +210,244 @@ function initDCEL(p0, p1, p2){
 /*
 	Returns the leaf that holds the face
 */
-function getLeaf(face, node){
+function getLeafWithFace(face, node){
 	if(!node)
 		node = tree;
 	if(node.face == face && node.child.length == 0)
 		return node;
 	else{
 		for(var i=0; i<node.child.length; i++){
-			nd = getLeaf(face, node.child[i]);
+			nd = getLeafWithFace(face, node.child[i]);
 			if(nd != null)
 				return nd;
 		}
 	}
 	return null;
 }
+/*
+function getFacesIncidentToPoint(p){
+	//if(DCEL.vertices[p] == {}) return [];
 
-function addNode(node,triangles, faceID){
-	node.child.push({
-		triangle: triangles,
-		face: faceID,
-		child: []
-	});
+	var initialEdge = DCEL.vertices[p].edge;
+	var currentEdge = initialEdge;
+	var faces = [];
+	faces[0] = DCEL.edges[initialEdge].faceLeft;
+	do{
+		console.log("iter");
+		edges = findTriangle(faces[faces.length-1]).edges;
+		var oldEdge = currentEdge;
+		for(var i=0; i<edges.length; i++){
+			if(edges[i] != currentEdge && (DCEL.edges[edges[i]].vertexBegin == p || DCEL.edges[edges[i]].vertexEnd == p)){
+				currentEdge = edges[i];
+				if(DCEL.edges[currentEdge].faceLeft == faces[faces.length-1]){
+					faces.push(DCEL.edges[currentEdge].faceRight);
+
+				}else{
+					faces.push(DCEL.edges[currentEdge].faceLeft);
+				}
+				break;
+			}
+		}
+		console.log(faces);
+		if(oldEdge == currentEdge)
+			break;
+	}while(currentEdge != initialEdge)
+	return faces;
+}*/
+
+function getFacesIncidentToPoint(p){
+	var faces = []
+	for ( var i = 1; i < DCEL.faces.length;++i){
+		vertexs = findTriangle(i).vertices;
+		for ( var j =0; j < vertexs.length; ++j) {
+			if ( vertexs[j] == p) {
+				faces.push(i)
+				j = vertexs.length
+			}
+		}
+	}
+	console.log(faces);
+	return faces;
 }
 
-function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and updates the hierarchy
+function updateHierarchy(faceL,faceR){
+	var l1 = getLeafWithFace(faceL);
+	var l2 = getLeafWithFace(faceR);
+	l1.triangle = findTriangle(faceL).vertices;
+	l2.triangle = findTriangle(faceR).vertices;
+}
+
+
+function swapEdge(E){
+	var faceL = DCEL.edges[E].faceLeft;
+	var faceR = DCEL.edges[E].faceRight;
+	if(faceL==0 || faceR==0) //We don't care about infinity face!
+		return;
+	var verticesL = findTriangle(faceL).vertices;
+	var verticesR = findTriangle(faceR).vertices;
+	var edgesL = findTriangle(faceL).edges;
+	var edgesR = findTriangle(faceR).edges;
+	var Vleft = -1;
+	var Vright = -1;
+	for(var i=0; i<verticesL.length; i++){ //We get opposite vertices
+		if(verticesL[i] != DCEL.edges[E].vertexBegin && verticesL[i] != DCEL.edges[E].vertexEnd)
+			Vleft = verticesL[i];
+		if(verticesR[i] != DCEL.edges[E].vertexBegin && verticesR[i] != DCEL.edges[E].vertexEnd)
+			Vright = verticesR[i];
+	}
+	console.log("SWAP BEGIN!");
+	console.log("Left triangle");
+	console.log(findTriangle(faceL).edges);
+	console.log("Right triangle");
+	console.log(findTriangle(faceR).edges);
+
+	var D = DCEL.edges[E].edgePrevious;
+	var B = DCEL.edges[E].edgeNext;
+	var A = -1;
+	var C = -1;
+	for(var i = 0; i<3; i++)
+		if(edgesL[i] != E && edgesL[i] != D)
+			A = edgesL[i];
+	for(var i = 0; i<3; i++)
+		if(edgesR[i] != E && edgesR[i] != B)
+			C = edgesR[i];
+	console.log("A :"+A);
+	console.log("B :"+B);
+	console.log("C :"+C);
+	console.log("D :"+D);
+
+
+	DCEL.vertices[DCEL.edges[E].vertexBegin].edge =  D;
+	DCEL.vertices[DCEL.edges[E].vertexEnd].edge =  B;
+	DCEL.edges[E].vertexBegin = Vleft;
+	DCEL.edges[E].vertexEnd = Vright;
+	DCEL.vertices[Vleft].edge = E;
+	DCEL.vertices[Vright].edge = E;
+
+
+	DCEL.edges[E].edgeNext = C;
+	DCEL.edges[E].edgePrevious = A;
+
+	/*The A situation, analogous to C*/
+	if(DCEL.edges[A].faceRight == faceL)
+		DCEL.edges[A].edgeNext = B;
+	else
+		DCEL.edges[A].edgePrevious = E;
+	/*The B situation, D situation should be similar so check it out!*/
+	if(DCEL.edges[B].faceRight == faceR){
+		DCEL.edges[B].faceRight = faceL;
+		DCEL.edges[B].edgeNext = E;
+	}else{
+		DCEL.edges[B].faceLeft = faceL;
+		DCEL.edges[B].edgePrevious = E;
+	}
+	/*The C situation*/
+	if(DCEL.edges[C].faceRight == faceR)
+		DCEL.edges[C].edgeNext = D;
+	else
+		DCEL.edges[C].edgePrevious = D;
+	/*The D situation*/
+	if(DCEL.edges[D].faceRight == faceL){
+		DCEL.edges[D].faceRight = faceR;
+		DCEL.edges[D].edgeNext = E;
+	}else{
+		DCEL.edges[D].faceLeft = faceR;
+		DCEL.edges[D].edgePrevious = E;
+	}
+
+	/*We also update our faces */
+	DCEL.faces[faceL].edge = E;
+	DCEL.faces[faceR].edge = E;
+	updateHierarchy(faceL, faceR);
+	console.log("Left triangle");
+	console.log(findTriangle(faceL).edges);
+	console.log("Right triangle");
+	console.log(findTriangle(faceR).edges);
+	console.log("SWAP END");
+}
+
+function decideOrientation(circle_points) {
+  var aux1 = circle_points[0].x * circle_points[1].y
+  var aux2 = circle_points[1].x * circle_points[2].y
+  var aux3 = circle_points[2].x * circle_points[0].y
+  var sum = aux1 + aux2 + aux3
+
+  var raux1 = circle_points[0].y * circle_points[1].x
+  var raux2 = circle_points[1].y * circle_points[2].x
+  var raux3 = circle_points[2].y * circle_points[0].x
+
+  var rest = raux1 + raux2 + raux3
+
+  return sum - rest
+}
+
+function makeDeterminant(circle_points,p){
+  a = circle_points[0]
+  b = circle_points[1]
+  c = circle_points[2]
+
+  c11 = b.x - a.x
+  c12 = c.x - a.x
+  c13 = p.x - a.x
+
+  c21 = c.y - a.y
+  c22 = b.y - a.y
+  c23 = p.y - a.y
+
+
+  c31 = (b.x-a.x)*(b.x+a.x)+(b.y-a.y)*(b.y+a.y)
+  c32 = (c.x-a.x)*(c.x+a.x)+(c.y-a.y)*(c.y+a.y)
+  c33 = (p.x-a.x)*(p.x+a.x)+(p.y-a.y)*(p.y+a.y)
+
+  d1 = c11 * c22 * c33
+  d2 = c12 * c23 * c31
+  d3 = c13 * c21 * c32
+
+  aux1 = d1 + d2 + d3
+
+  d4 = c31 * c22 * c13
+  d5 = c32 * c23 * c11
+  d6 = c33 * c21 * c12
+
+  aux2 = d4 + d5 + d6
+
+  return aux1 - aux2
+}
+
+function pointInCircle(p, circle_points) {
+	for(var i=0; i<circle_points.length; i++)
+		circle_points[i] = DCEL.vertices[circle_points[i]];
+
+  o = decideOrientation(circle_points)
+
+
+	var d = makeDeterminant(circle_points,p)*o; //Here we compute the determinant using an auxiliary math library
+	if(d<=0) return true;//The point lies in the interior of the circle
+	return false;
+}
+
+
+function checkDelaunay(p){
+	faces = getFacesIncidentToPoint(p);
+	var b = true;
+	for(var i=0; i<faces.length; i++){
+		edges = findTriangle(faces[i]).edges;
+		for(var j=0; j<edges.length; j++){
+			if(DCEL.edges[edges[j]].vertexBegin != p && DCEL.edges[edges[j]].vertexEnd != p){
+				faceToCheck = DCEL.edges[edges[j]].faceLeft;
+				if(faceToCheck == faces[i])
+					faceToCheck = DCEL.edges[edges[j]].faceRight;
+				if(pointInCircle(DCEL.vertices[p],findTriangle(faceToCheck).vertices)){
+					swapEdge(edges[j]);
+					b = false;
+				}
+			}
+		}
+	}
+	return b;
+}
+
+function addToDCEL(p, faceIndex, node){ //ADDs a point in a known face and updates the hierarchy
 	//ADD vertex
 	DCEL.vertices.push({x: p.x, y: p.y, edge: DCEL.edges.length}); //We assign the next new edge that we will add since we know it's incident
 
@@ -211,7 +459,6 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 
 	if(onEdge == -1){ //Point not on edge
 		//ADD 2 new faces
-
 		DCEL.faces.push(
 			{edge: triangle.edges[1]},
 			{edge: triangle.edges[2]});
@@ -250,15 +497,21 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 				DCEL.edges[triangle.edges[i]].edgeNext = triangle.newEdges[i];
 				DCEL.edges[triangle.edges[i]].faceRight = triangle.faces[i];
 			}
-			addNode(nodeA,findTriangle(triangle.faces[i]).vertices,triangle.faces[i])
 		}
-
-}	else{ //Point on returned edge and edge is obliged to be an internal edge
+		//Update hierarchy
+		for(var i=0; i<3; i++){
+		node.child.push({
+			triangle: findTriangle(triangle.faces[i]).vertices,
+			face: triangle.faces[i],
+			child: []
+		});
+		}
+	}else{ //Point on returned edge and edge is obliged to be an internal edge
 		//Find the 2 affected triangles
 		var triangleA = findTriangle(faceIndex, onEdge);
 		var triangleB;
 		var faceB;
-		var nodeB;
+		var node2;
 
 		if(DCEL.edges[onEdge].faceLeft == faceIndex)
 			faceB = DCEL.edges[onEdge].faceRight;
@@ -266,12 +519,7 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 			faceB = DCEL.edges[onEdge].faceLeft;
 
 		triangleB = findTriangle(faceB, onEdge);
-		nodeB = getLeaf(faceB);
-		//Obtenim el node del arbre de la cara B.
-		if(nodeB == null){
-			console.log("Se perendio esta vaina");
-			return;
-		}
+		node2 = getLeafWithFace(faceB);
 		//Define Quadrilater union of the 2 triangles in CCW order starting by edge pointed by onEdge
 		var quadrilater = {
 			faces: [faceIndex, DCEL.faces.length, DCEL.faces.length+1, faceB],
@@ -335,16 +583,57 @@ function addToDCEL(p, faceIndex, nodeA){ //ADDs a point in a known face and upda
 				DCEL.edges[quadrilater.boundaryEdges[i]].faceRight = quadrilater.faces[i];
 				DCEL.edges[quadrilater.boundaryEdges[i]].edgeNext = quadrilater.internalEdges[i];
 			}
-			if ( i < 2 ) {
-				addNode(nodeA,findTriangle(quadrilater.faces[i]).vertices,quadrilater.faces[i])
-			}
-			else {
-
-				addNode(nodeB,findTriangle(quadrilater.faces[i]).vertices,quadrilater.faces[i])
-			}
 		}
 
+		node.child.push({
+					triangle: triangleA.vertices,
+					face: faceIndex,
+					child: []
+				});
+		node.child.push({
+					triangle: findTriangle(DCEL.faces.length-2).vertices,
+					face: DCEL.faces.length-2,
+					child: []
+				});
+		if(node2 == null){
+			console.error("Could not found the triangle node corresponding to face "+faceB+'.');
+			return;
+		}
+		node2.child.push({
+					triangle: triangleB.vertices,
+					face: faceB,
+					child: []
+				});
+		node2.child.push({
+					triangle: findTriangle(DCEL.faces.length-1).vertices,
+					face: DCEL.faces.length-1,
+					child: []
+				});
 	}
+}
+
+/*
+	This method computes the determinant of the third component belonging to the cross product between v1 and v2
+*/
+function determinant(v1, v2) {
+    return v1.x * v2.y - v1.y * v2.x;
+}
+
+/*
+	This method returns 0 if the point is at the center, 1 if it is at the left and -1 if is at the right of the segment defined by t1 and t2.
+*/
+function pointRelativeToSegment(t1, t2, p) {
+    let v1 = {
+        'x': t2.x - t1.x,
+        'y': t2.y - t1.y
+    };
+    let v2 = {
+        'x': t1.x - p.x,
+        'y': t1.y - p.y
+    };
+    var a = determinant(v1, v2);
+    if (a != 0) a = a / Math.abs(a);
+    return a;
 }
 
 function pointInTriangle(p, triangle) {
@@ -360,69 +649,9 @@ function pointInTriangle(p, triangle) {
 	return false;
 }
 
-
-function decideOrientation(circle_points) {
-  var aux1 = circle_points[0].x * circle_points[1].y
-  var aux2 = circle_points[1].x * circle_points[2].y
-  var aux3 = circle_points[2].x * circle_points[0].y
-  var sum = aux1 + aux2 + aux3
-
-  var raux1 = circle_points[0].y * circle_points[1].x
-  var raux2 = circle_points[1].y * circle_points[2].x
-  var raux3 = circle_points[2].y * circle_points[0].x
-
-  var rest = raux1 + raux2 + raux3
-
-  return sum - rest
-}
-
-function makeDeterminant(circle_points,p){
-  a = circle_points[0]
-  b = circle_points[1]
-  c = circle_points[2]
-
-  c11 = b.x - a.x
-  c12 = c.x - a.x
-  c13 = p.x - a.x
-
-  c21 = c.y - a.y
-  c22 = b.y - a.y
-  c23 = p.y - a.y
-
-
-  c31 = (b.x-a.x)*(b.x+a.x)+(b.y-a.y)*(b.y+a.y)
-  c32 = (c.x-a.x)*(c.x+a.x)+(c.y-a.y)*(c.y+a.y)
-  c33 = (p.x-a.x)*(p.x+a.x)+(p.y-a.y)*(p.y+a.y)
-
-  d1 = c11 * c22 * c33
-  d2 = c12 * c23 * c31
-  d3 = c13 * c21 * c32
-
-  aux1 = d1 + d2 + d3
-
-  d4 = c31 * c22 * c13
-  d5 = c32 * c23 * c11
-  d6 = c33 * c21 * c12
-
-  aux2 = d4 + d5 + d6
-
-  return aux1 - aux2
-}
-
-function pointInCircle(p, circle_points) {
-	for(var i=0; i<circle_points.length; i++)
-		circle_points[i] = DCEL.vertices[circle_points[i]];
-
-  o = decideOrientation(circle_points)
-
-
-	var d = makeDeterminant(circle_points,p)*o; //Here we compute the determinant using an auxiliary math library
-	if(d<=0) return true;//The point lies in the interior of the circle
-	return false;
-}
-
-
-
+/*
+	Returns the leaf that contains the point. Otherwise, returns null.
+*/
 function findHierarchyTriangle(p, h){
 	if(!h) h = tree;
 
@@ -440,193 +669,37 @@ function findHierarchyTriangle(p, h){
 	return null;
 }
 
+/*
+function pointInCircle(p, circle_points) {
+	for(var i=0; i<circle_points.length; i++)
+		circle_points[i] = DCEL.vertices[circle_points[i]];
+
+	var v1 = [circle_points[1].x-circle_points[0].x, circle_points[2].x-circle_points[0].x, p.x-circle_points[0].x];
+	var v2 = [circle_points[1].y-circle_points[0].y, circle_points[2].y-circle_points[0].y, p.y-circle_points[0].y];
+	var v3 = [(circle_points[1].x-circle_points[0].x)*(circle_points[1].x+circle_points[0].x)+(circle_points[1].y-circle_points[0].y)*(circle_points[1].y+circle_points[0].y),
+            (circle_points[2].x-circle_points[0].x)*(circle_points[2].x+circle_points[0].x)+(circle_points[2].y-circle_points[0].y)*(circle_points[2].y+circle_points[0].y),
+            (p.x-circle_points[0].x)*(p.x+circle_points[0].x)+(p.y-circle_points[0].y)*(p.y+circle_points[0].y)]
+
+	var d = math.det([v1,v2,v3]); //Here we compute the determinant using an auxiliary math library
+	if(d<=0) return true;//The point lies in the interior of the circle
+	return false;
+}
+*/
 function findAndAddPoint(newPoint){ //Finds the leaf in the triangle hierarchy that contains the point and adds it to the DCEL.
 	var h = findHierarchyTriangle(newPoint);
-	if(h==null)	{
-			DCEL.vertices.push({x: null, y: null, edge: null});
+	console.log(newPoint)
+	if(h!=null)
+		addToDCEL(newPoint, h.face, h);
+	else{
+		console.error("Out of bounds");
+		DCEL.vertices.push({});
 	}
-
-	else	addToDCEL(newPoint, h.face, h);
 }
 
 function initTree(p1,p2,p3){
 	tree.triangle = [p1,p2,p3];
 	tree.face = 1;
 }
-
-
-function getFacesIncidentToPoint(p){
-  var faces = []
-  if ( DCEL.vertices[p].x == null) {
-    console.log("ENTROOOO TT")
-    return ;
-  }
-  console.log(DCEL)
-	for ( var i = 1; i < DCEL.faces.length;++i){
-    vertexs = findTriangle(i).vertices;
-    for ( var j =0; j < vertexs.length; ++j) {
-      if ( vertexs[j] == p) {
-        faces.push(i)
-        j = vertexs.length
-      }
-    }
-  }
-	return faces;
-}
-
-
-
-function updateHierarchy(faceL,faceR){
-	var l1 = getLeaf(faceL);
-	var l2 = getLeaf(faceR);
-	l1.triangle = findTriangle(faceL).vertices;
-	l2.triangle = findTriangle(faceR).vertices;
-}
-
-function change(edge,next,prev,left,right,bleft,bright){
-	console.log(edge)
-	console.log(left)
-  DCEL.edges[edge].edgeNext = next;
-  DCEL.edges[edge].edgePrevious = prev
-  if (bleft) {
-
-    DCEL.edges[edge].faceLeft = left;
-  }
-  if (bright) {
-    DCEL.edges[edge].faceRight = right;
-  }
-}
-
-function swapEdge(e){
-	var faceL = DCEL.edges[e].faceLeft;
-	var faceR = DCEL.edges[e].faceRight;
-	if(faceL==0 || faceR==0) //We don't care about infinity face!
-		return;
-	var verticesL = findTriangle(faceL).vertices;
-	var verticesR = findTriangle(faceR).vertices;
-	var p = -1;
-	var b = -1;
-
-  // Definim les arestes implicades.
-  var e2 = DCEL.edges[e].edgePrevious;
-	if ( e2.faceLeft == faceL) {
-		var e3 = DCEL.edges[e2].edgePrevious;
-	}
-	else {
-		var e3 = DCEL.edges[e2].edgeNext;
-	}
-	var e4 = DCEL.edges[e].edgeNext;
-	if (e4.faceLeft == faceR) {
-		var e5 = DCEL.edges[e4].edgePrevious;
-	}
-	else{
-		var e5 = DCEL.edges[e4].edgeNext;
-	}
-	leftPoint = e.vertexBegin
-	rightPoint = e.vertexEnd
-// Reposem el Begin i End
-  var p = -1;
-	var b = -1;
-	for(var i=0; i<verticesL.length; i++){
-		if(verticesL[i] != DCEL.edges[e].vertexBegin && verticesL[i] != DCEL.edges[e].vertexEnd)
-			b = verticesL[i];
-		if(verticesR[i] != DCEL.edges[e].vertexBegin && verticesR[i] != DCEL.edges[e].vertexEnd)
-			p = verticesR[i];
-	}
-
-// L'aresta swapejada
-	DCEL.edges[e].vertexBegin = p;
-	DCEL.edges[e].vertexEnd = b;
-
-	//Update Edge1
-	change(e,e3,e5,faceL,faceR,true,true);
-
-// cambiar el e2
-if (e2.faceLeft == faceL) {
-  change(e2,e2.edgeNext,e,faceL,e2.faceRight,true,false);
-}
-else {
-  change(e2.e,e2.edgePrevious,e2.faceLeft,faceL,false,true);
-}
-// cambiar el e3
-if (e3.faceLeft == faceL) {
-  change(e3,e4,e3.edgePrevious,faceR,e3.faceRight,true,false);
-}
-else {
-  change(e3,e3.edgeNext,e4,e3.faceLeft,faceR,false,true);
-}
-// cambiar el e4
-if (e4.faceLeft == faceR) {
-  change(e4,e4.edgeNext,e,faceR,e4.faceRight,true,false);
-}
-else {
-	 change(e4,e,e4.edgePrevious,e3.faceLeft,faceR,false,true);
-}
-// Cambiar e5
-if (e5.faceLeft == faceR) {
-	change(e5,e5.edgeNext,e2,faceL,e5.faceRight,true,false);
-}
-else{
-	change(e5,e2,e5.edgePrevious,e5.faceLeft,faceL,false,true);
-}
-
-  // Redefinir el edge de les cares potser l'aresta ja no forma part de la cara.
-  DCEL.faces[faceL].edge = e
-  DCEL.faces[faceR].edge = e
-	DCEL.vertices[p].edge= e
-	DCEL.vertices[b].edge=e
-	DCEL.vertices[leftPoint].edge = e2
-	DCEL.vertices[rightPoint].edge = e3
-
-  updateHierarchy(faceL,faceR)
-}
-
-
-function getEdge(p, edges){
-  // Retorna l'aresta que no interactua amb P en la face actual.
-  edge = -1
-  console.log(p)
-  for (var i = 0; i< edges.length;++i) {
-    if(DCEL.edges[edges[i]].vertexBegin != p && DCEL.edges[edges[i]].vertexEnd != p) {
-        console.log("Tengo E")
-        edge = edges[i];
-    }
-  }
-  return edge;
-}
-
-function checkDelaunay(p){
-  //debugger;
-	faces = getFacesIncidentToPoint(p);
-	var b = true;
-	for(var i=0; i<faces.length; i++){
-    var actTriangle = findTriangle(faces[i])
-		edges = actTriangle.edges;
-    console.log(p)
-    console.log("EDGES")
-    console.log(edges)
-    console.log(DCEL)
-    var edge = getEdge(p,edges);
-		faceToCheck = DCEL.edges[edge].faceLeft;
-		if(faceToCheck == faces[i])
-			faceToCheck = DCEL.edges[edge].faceRight;
-
-    verticesCheck = findTriangle(faceToCheck).vertices;
-    pointToCheck = -1
-    for (var j = 0; j < verticesCheck.length;++j){
-      if ( verticesCheck[j] != DCEL.edges[edge].vertexBegin  && DCEL.edges[edge].vertexEnd !=  verticesCheck[j]){
-        pointToCheck = verticesCheck[j]
-      }
-    }
-		if(pointInCircle(DCEL.vertices[pointToCheck],actTriangle.vertices)){
-      console.log("HAgo swap")
-			swapEdge(edge);
-			b = false;
-		}
-	}
-	return b;
-}
-
 
 function computeTriangulation(points) {
 
@@ -640,34 +713,28 @@ function computeTriangulation(points) {
 	initDCEL(enclosingTriangle[0], enclosingTriangle[1], enclosingTriangle[2]);
 	//Initialize hierarchical triangle structure
 	initTree(0, 1, 2);
+	//ADD first point
+	//addToDCEL(points[3], 1);
 
-	for(var i=3; i<7; ++i){
+	for(var i=3; i<8; ++i){
+		debugger
 		findAndAddPoint(points[i]);
-    var b = false
-    while(!b){
-       b = checkDelaunay(i)
-       console.log("he salido bbs")
-    }
-  }
+		var b = false;
+		while(!b){
+			console.log("loop");
+			console.log(DCEL)
+			b = checkDelaunay(i);
 
-	var lenOutput = DCEL.faces.length-1;
-	var outputTriangles = []
-
-	var triangle;
-	cont = 0;
-	// for remove the edges incident to added vertex.
-	for(var i = 0; i < lenOutput; ++i){
-		triangle = findTriangle(i+1);
-		var bona = true;
-		for ( var j = 0; j < 3; ++j) {
-			if(triangle.vertices[j] == 0 || triangle.vertices[j] == 1 || triangle[j] ==2) {
-				bona = false
-			}
-		}
-		if (bona==true){
-			outputTriangles.push(triangle.vertices)
 		}
 	}
-  console.log(DCEL)
+	//READ triangles from DCEL
+	var outputTriangles = new Array(DCEL.faces.length-1);
+
+	var triangle;
+	for(var i = 1; i < DCEL.faces.length; ++i){
+		triangle = findTriangle(i);
+		outputTriangles[i-1] = triangle.vertices;
+	}
+
 	return outputTriangles;
 }
